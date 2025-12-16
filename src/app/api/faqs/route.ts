@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Permission, PublishStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 type IncomingAttachment = {
   name: string;
   url: string;
