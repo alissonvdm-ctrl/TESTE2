@@ -1,11 +1,12 @@
 # Sistema Web de FAQ
 
-Aplicação Next.js pronta para deploy na Vercel com banco de dados PostgreSQL (Neon/Supabase/RDS) usando Prisma. Inclui CRUD de FAQs, categorização por assuntos, hierarquia, anexos e compartilhamento.
+Aplicação Next.js pronta para deploy na Vercel com banco de dados PostgreSQL (Neon/Supabase/RDS) usando Prisma. Inclui CRUD de FAQs, busca/full-text simples, filtros por assunto, hierarquia, anexos e compartilhamento entre usuários.
 
 ## Estrutura de Pastas
 - `src/app` — rotas e páginas (App Router) e componentes de interface.
 - `src/app/api` — handlers serverless para CRUD de FAQs.
-- `src/components/FAQForm.tsx` — formulário client-side para criar FAQs.
+- `src/components/FAQForm.tsx` — formulário client-side para criar FAQs com anexos e compartilhamentos.
+- `src/components/FilterBar.tsx` — filtros por texto e assuntos configuráveis.
 - `src/lib/prisma.ts` — singleton do cliente Prisma para evitar conexões extras.
 - `prisma/schema.prisma` — modelagem completa do banco.
 
@@ -22,10 +23,10 @@ Aplicação Next.js pronta para deploy na Vercel com banco de dados PostgreSQL (
 3. Faça deploy com `vercel` CLI ou conectando o repositório ao GitHub.
 
 ## Rotas de API
-- `GET /api/faqs` — lista FAQs com assuntos e anexos.
-- `POST /api/faqs` — cria FAQ com `title`, `summary`, `content`, `status`, `topicNames[]`, `authorId`.
-- `GET /api/faqs/:id` — detalhes da FAQ.
-- `PATCH /api/faqs/:id` — atualiza campos e assuntos.
+- `GET /api/faqs` — lista FAQs com assuntos, anexos, compartilhamentos e contagem de sub-faqs. Aceita query `q` (busca livre) e `topics` (csv de assuntos).
+- `POST /api/faqs` — cria FAQ com `title`, `summary`, `content`, `status`, `topicNames[]`, `parentId`, `authorEmail`, anexos (`[{name,url,mimeType?,size?}]`) e compartilhamentos (`[{email, permission?, expiresAt?}]`).
+- `GET /api/faqs/:id` — detalhes da FAQ incluindo hierarquia, anexos e compartilhamentos.
+- `PATCH /api/faqs/:id` — substitui assuntos, anexos, compartilhamentos e hierarquia.
 - `DELETE /api/faqs/:id` — remove FAQ e registros relacionados.
 
 ## Modelagem do Banco (Prisma)
