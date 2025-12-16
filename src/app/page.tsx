@@ -2,9 +2,10 @@ import { Prisma } from '@prisma/client';
 import Link from 'next/link';
 import FAQForm from '@/components/FAQForm';
 import FilterBar from '@/components/FilterBar';
-import { prisma } from '@/lib/prisma';
+import { getPrismaClient } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 type SearchParams = {
   q?: string;
@@ -35,6 +36,8 @@ async function getFaqs({ q, topicFilters }: { q?: string; topicFilters: string[]
       : {})
   };
 
+  const prisma = getPrismaClient();
+
   const faqs = await prisma.fAQ.findMany({
     where,
     include: {
@@ -54,6 +57,8 @@ async function getFaqs({ q, topicFilters }: { q?: string; topicFilters: string[]
 }
 
 async function getTopics() {
+  const prisma = getPrismaClient();
+
   return prisma.topic.findMany({
     include: { _count: { select: { faqs: true } } },
     orderBy: { name: 'asc' }
@@ -61,6 +66,8 @@ async function getTopics() {
 }
 
 async function getParentOptions() {
+  const prisma = getPrismaClient();
+
   return prisma.fAQ.findMany({
     select: { id: true, title: true },
     orderBy: { updatedAt: 'desc' }

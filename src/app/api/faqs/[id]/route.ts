@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { Permission, PublishStatus } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import { getPrismaClient } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const runtime = 'nodejs';
 
 type IncomingAttachment = {
   name: string;
@@ -28,6 +29,8 @@ function normalizePermission(value?: string | null): Permission {
 }
 
 async function ensureUser(email: string, name?: string) {
+  const prisma = getPrismaClient();
+
   return prisma.user.upsert({
     where: { email },
     update: { name: name ?? email },
@@ -40,6 +43,8 @@ async function ensureUser(email: string, name?: string) {
 }
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
+  const prisma = getPrismaClient();
+
   const faq = await prisma.fAQ.findUnique({
     where: { id: params.id },
     include: {
@@ -59,6 +64,8 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  const prisma = getPrismaClient();
+
   const body = await request.json();
   const {
     title,
@@ -162,6 +169,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+  const prisma = getPrismaClient();
+
   await prisma.attachment.deleteMany({ where: { faqId: params.id } });
   await prisma.share.deleteMany({ where: { faqId: params.id } });
   await prisma.fAQTopic.deleteMany({ where: { faqId: params.id } });

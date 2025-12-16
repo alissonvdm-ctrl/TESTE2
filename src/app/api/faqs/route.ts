@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Permission, PublishStatus } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import { getPrismaClient } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const runtime = 'nodejs';
 
 type IncomingAttachment = {
   name: string;
@@ -28,6 +29,8 @@ function normalizePermission(value?: string | null): Permission {
 }
 
 async function ensureUser(email: string, name?: string) {
+  const prisma = getPrismaClient();
+
   return prisma.user.upsert({
     where: { email },
     update: { name: name ?? email },
@@ -46,6 +49,8 @@ function parseTopics(param?: string | string[] | null) {
 }
 
 export async function GET(request: NextRequest) {
+  const prisma = getPrismaClient();
+
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q');
   const topicNames = parseTopics(searchParams.get('topics'));
@@ -88,6 +93,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const prisma = getPrismaClient();
+
   const body = await request.json();
   const {
     title,
