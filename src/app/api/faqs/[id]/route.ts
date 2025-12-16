@@ -113,6 +113,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     validShares.map((share) => ensureUser(share.email, share.email.split('@')[0]))
   );
 
+  const sharePayload = validShares.map((share, idx) => {
+    const expiresAt = share.expiresAt;
+    return {
+      userId: shareUsers[idx].id,
+      permission: normalizePermission(share.permission),
+      expiresAt: expiresAt ? new Date(expiresAt) : null
+    };
+  });
+
   const faq = await prisma.$transaction(async (tx) => {
     await tx.attachment.deleteMany({ where: { faqId: params.id } });
     await tx.share.deleteMany({ where: { faqId: params.id } });
@@ -133,11 +142,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           create: attachmentsData
         },
         shares: {
-          create: shareUsers.map((user, idx) => ({
-            userId: user.id,
-            permission: normalizePermission(validShares[idx].permission),
-            expiresAt: validShares[idx].expiresAt ? new Date(validShares[idx].expiresAt as string) : null
-          }))
+          create: sharePayload
         }
       },
       include: {

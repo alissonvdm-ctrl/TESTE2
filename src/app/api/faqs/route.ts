@@ -148,6 +148,15 @@ export async function POST(request: NextRequest) {
     validShares.map((share) => ensureUser(share.email, share.email.split('@')[0]))
   );
 
+  const sharePayload = validShares.map((share, idx) => {
+    const expiresAt = share.expiresAt;
+    return {
+      userId: shareUsers[idx].id,
+      permission: normalizePermission(share.permission),
+      expiresAt: expiresAt ? new Date(expiresAt) : null
+    };
+  });
+
   const faq = await prisma.fAQ.create({
     data: {
       title,
@@ -162,13 +171,9 @@ export async function POST(request: NextRequest) {
       attachments: {
         create: attachmentsData
       },
-        shares: {
-          create: shareUsers.map((user, idx) => ({
-            userId: user.id,
-            permission: normalizePermission(validShares[idx].permission),
-            expiresAt: validShares[idx].expiresAt ? new Date(validShares[idx].expiresAt as string) : null
-          }))
-        }
+      shares: {
+        create: sharePayload
+      }
     },
     include: {
       topics: { include: { topic: true } },
