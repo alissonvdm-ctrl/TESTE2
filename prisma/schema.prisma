@@ -1,0 +1,95 @@
+// Prisma schema for FAQ system deployable on Vercel using PostgreSQL/Neon
+// Run `npx prisma db push` to create schema in DATABASE_URL database.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      Role     @default(READER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  faqs      FAQ[]    @relation("FAQAuthor")
+  shares    Share[]
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  READER
+}
+
+model FAQ {
+  id          String        @id @default(cuid())
+  title       String
+  summary     String?
+  content     String
+  status      PublishStatus @default(DRAFT)
+  priority    Int           @default(0)
+  author      User          @relation("FAQAuthor", fields: [authorId], references: [id])
+  authorId    String
+  parent      FAQ?          @relation("Hierarchy", fields: [parentId], references: [id])
+  parentId    String?
+  children    FAQ[]         @relation("Hierarchy")
+  topics      FAQTopic[]
+  attachments Attachment[]
+  shares      Share[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Topic {
+  id        String      @id @default(cuid())
+  name      String      @unique
+  faqs      FAQTopic[]
+  createdAt DateTime    @default(now())
+}
+
+model FAQTopic {
+  faqId   String
+  topicId String
+  faq     FAQ   @relation(fields: [faqId], references: [id])
+  topic   Topic @relation(fields: [topicId], references: [id])
+  @@id([faqId, topicId])
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  faq        FAQ      @relation(fields: [faqId], references: [id])
+  faqId      String
+  name       String
+  mimeType   String
+  url        String
+  size       Int
+  createdAt  DateTime @default(now())
+}
+
+model Share {
+  id        String   @id @default(cuid())
+  faq       FAQ      @relation(fields: [faqId], references: [id])
+  faqId     String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  permission Permission
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+}
+
+enum Permission {
+  VIEW
+  EDIT
+  ADMIN
+}
