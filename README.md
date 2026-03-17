@@ -46,3 +46,4 @@ Aplicação Next.js pronta para deploy na Vercel com banco de dados PostgreSQL (
 - Full-text search (Postgres `tsvector` ou serviço como Meilisearch/Algolia).
 - Interface para upload de anexos com antivírus e compressão de imagem.
 - Compartilhamento em massa por times e cache de ACL em Redis.
+# Claude-Oracle-
