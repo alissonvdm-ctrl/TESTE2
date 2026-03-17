@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 # Upload / static directories
 # ---------------------------------------------------------------------------
 
-UPLOAD_DIR = Path(settings.UPLOAD_DIR)
+UPLOAD_DIR = Path(settings.upload_dir)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
@@ -67,11 +67,11 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
     await init_db()
     logger.info("Database initialised.")
 
-    logger.info("Starting up: connecting to Redis at %s …", settings.REDIS_URL)
+    logger.info("Starting up: connecting to Redis at %s …", settings.redis_url)
     global redis_client  # noqa: PLW0603
     try:
         redis_client = aioredis.from_url(
-            settings.REDIS_URL,
+            settings.redis_url,
             encoding="utf-8",
             decode_responses=True,
             socket_connect_timeout=5,
@@ -106,14 +106,14 @@ def create_app() -> FastAPI:
     """Construct and configure the FastAPI application."""
 
     app = FastAPI(
-        title=settings.APP_TITLE,
+        title=settings.app_title,
         description=(
             "REST + WebSocket API for numeric sequence analysis: "
             "upload Excel data, run statistical diagnostics, "
             "change-point detection, machine-learning forecasting, "
             "ensemble modelling, and report generation."
         ),
-        version=settings.APP_VERSION,
+        version=settings.app_version,
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",
@@ -125,7 +125,7 @@ def create_app() -> FastAPI:
     # -----------------------------------------------------------------------
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.ALLOWED_ORIGINS,
+        allow_origins=settings.allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -213,7 +213,7 @@ def create_app() -> FastAPI:
 
         return {
             "status": "ok",
-            "version": settings.APP_VERSION,
+            "version": settings.app_version,
             "redis": "connected" if redis_ok else "unavailable",
         }
 

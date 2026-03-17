@@ -113,6 +113,16 @@ class Settings(BaseSettings):
     )
 
     # -------------------------------------------------------------------------
+    # API metadata
+    # -------------------------------------------------------------------------
+    app_title: str = Field(default="Numeric Sequence Analyzer API", description="FastAPI app title")
+    app_version: str = Field(default="1.0.0", description="API version string")
+    allowed_origins: list[str] = Field(
+        default=["http://localhost:3000", "http://localhost:5173", "http://localhost:80"],
+        description="CORS allowed origins",
+    )
+
+    # -------------------------------------------------------------------------
     # Frontend (injected at build time via Vite)
     # -------------------------------------------------------------------------
     vite_api_base_url: str = Field(

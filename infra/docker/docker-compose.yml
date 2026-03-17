@@ -1,0 +1,231 @@
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# NumericSequenceAnalyzer – full stack
+# ---------------------------------------------------------------------------
+
+x-common-env: &common-env
+  DATABASE_URL: postgresql+asyncpg://analyst:analyst_password@postgres:5432/sequence_analyzer
+  SYNC_DATABASE_URL: postgresql://analyst:analyst_password@postgres:5432/sequence_analyzer
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/1
+  CELERY_RESULT_BACKEND: redis://redis:6379/2
+  UPLOAD_DIR: /app/uploads
+  DEBUG: "false"
+  APP_ENV: production
+
+services:
+
+  # ─────────────────────────────────────────────
+  # PostgreSQL
+  # ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sequence_analyzer
+      POSTGRES_USER: analyst
+      POSTGRES_PASSWORD: analyst_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U analyst -d sequence_analyzer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  # ─────────────────────────────────────────────
+  # Redis
+  # ─────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  # ─────────────────────────────────────────────
+  # FastAPI backend
+  # ─────────────────────────────────────────────
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────
+  # Celery worker – analysis queue
+  # ─────────────────────────────────────────────
+  worker-analysis:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile
+    restart: unless-stopped
+    command: >
+      celery -A backend.tasks.celery_app:celery_app worker
+        --loglevel=info
+        --queues=analysis
+        --concurrency=4
+        --hostname=worker-analysis@%h
+    environment:
+      <<: *common-env
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+
+  # ─────────────────────────────────────────────
+  # Celery worker – training queue
+  # ─────────────────────────────────────────────
+  worker-training:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile
+    restart: unless-stopped
+    command: >
+      celery -A backend.tasks.celery_app:celery_app worker
+        --loglevel=info
+        --queues=training
+        --concurrency=2
+        --hostname=worker-training@%h
+    environment:
+      <<: *common-env
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+
+  # ─────────────────────────────────────────────
+  # Celery worker – reports queue
+  # ─────────────────────────────────────────────
+  worker-reports:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile
+    restart: unless-stopped
+    command: >
+      celery -A backend.tasks.celery_app:celery_app worker
+        --loglevel=info
+        --queues=reports
+        --concurrency=2
+        --hostname=worker-reports@%h
+    environment:
+      <<: *common-env
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+
+  # ─────────────────────────────────────────────
+  # Celery Beat scheduler
+  # ─────────────────────────────────────────────
+  beat:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile
+    restart: unless-stopped
+    command: >
+      celery -A backend.tasks.celery_app:celery_app beat
+        --loglevel=info
+    environment:
+      <<: *common-env
+    depends_on:
+      - redis
+    networks:
+      - backend
+
+  # ─────────────────────────────────────────────
+  # Flower – Celery monitoring
+  # ─────────────────────────────────────────────
+  flower:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile
+    restart: unless-stopped
+    command: >
+      celery -A backend.tasks.celery_app:celery_app flower
+        --port=5555
+    environment:
+      <<: *common-env
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    networks:
+      - backend
+      - frontend
+
+  # ─────────────────────────────────────────────
+  # Nginx reverse proxy
+  # ─────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - uploads:/app/uploads:ro
+    depends_on:
+      - api
+    networks:
+      - frontend
+
+# ─────────────────────────────────────────────
+# Named volumes
+# ─────────────────────────────────────────────
+volumes:
+  postgres_data:
+  redis_data:
+  uploads:
+
+# ─────────────────────────────────────────────
+# Networks
+# ─────────────────────────────────────────────
+networks:
+  backend:
+    driver: bridge
+  frontend:
+    driver: bridge
